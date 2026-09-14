@@ -1,0 +1,16 @@
+# Extra dependencies for local development and testing ONLY -- never installed on Render.
+#
+# Production (requirements.txt) intentionally does NOT include full tensorflow: it's what caused a
+# real out-of-memory crash on Render's 512MB tier (see the comment in requirements.txt), and both
+# trained models are served in production via the much lighter tflite-runtime instead.
+#
+# This file adds full tensorflow-cpu back for local work that still needs it:
+#   - running tests/test_model_architecture.py (exercises the untrained MobileNetV2 architecture
+#     via build_classifier_model/predict_probabilities, which still use tf.keras directly)
+#   - retraining either model, or re-running the .keras -> .tflite conversion if a model changes
+#
+# Usage: pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements.txt
+tensorflow-cpu==2.21.0
+pytest>=7.0

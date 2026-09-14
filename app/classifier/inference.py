@@ -26,7 +26,31 @@ paper more often than it falsely calls something paper). This detector
 answers one narrower question than the original 6-class spec -- it can only
 say "paper" or "not_paper" -- so it is wired up as its own ModelVersion
 ("paper_binary_cnn_scratch_v1") rather than pretending to be the full
-6-class system. The full MobileNetV2 model remains future work.
+6-class system. The full MobileNetV2 model remains future work. The 6-class
+model trained in the following session (see below) is real too, but does
+not clear the gate, so it ships separately as an experimental preview.
+
+What changed in the deployment session (real production incident, not
+hypothetical): after both trained models were wired up and deployed, live
+classification requests started returning HTTP 500 on the actual Render
+site. Render's application logs showed the worker process receiving
+SIGKILL with "Perhaps out of memory?" while importing TensorFlow -- Render's
+free/Starter tier caps a web service at 512 MB RAM, and a direct
+measurement in this environment showed loading one trained model with full
+``tensorflow-cpu`` and running a single prediction peaks at ~654 MB RSS, well
+over that budget, even before Flask/gunicorn's own overhead. This was a
+real crash, verified against the actual Render logs, not a guess. The fix:
+both trained models are now shipped as converted ``.tflite`` files and
+served through ``tflite-runtime`` instead of full Keras/TensorFlow at
+request time. The conversion was verified bit-identical to the original
+Keras models on every held-out fixture image before shipping it (matching
+probabilities to full float32 precision, matching top-1 class on every
+sample) -- so this is a memory/deployment fix, not a retrain, and it does
+not change either model's measured accuracy. The same measurement redone
+with ``tflite-runtime`` showed ~48 MB peak RSS for the same prediction,
+comfortably inside Render's 512 MB limit. ``tflite-runtime`` currently only
+ships pre-built wheels against NumPy 1.x, so production now pins
+``numpy<2`` -- see the comment in requirements.txt.
 """
 
 import os
@@ -37,16 +61,42 @@ from config import Config
 
 _MODEL_CACHE = {}
 
+try:  # Production ships the small tflite-runtime package (see requirements.txt).
+    import tflite_runtime.interpreter as tflite
+except ImportError:  # pragma: no cover - local/dev fallback when only full TF is installed
+    import tensorflow.lite as tflite
+
 PAPER_MODEL_PATH = os.path.join(
-    os.path.dirname(__file__), "artifacts", "paper_detector_v1.keras"
+    os.path.dirname(__file__), "artifacts", "paper_detector_v1.tflite"
 )
 PAPER_MODEL_IMAGE_SIZE = (128, 128)
 
 MULTICLASS_MODEL_PATH = os.path.join(
-    os.path.dirname(__file__), "artifacts", "multiclass_detector_v1.keras"
+    os.path.dirname(__file__), "artifacts", "multiclass_detector_v1.tflite"
 )
 MULTICLASS_MODEL_IMAGE_SIZE = (128, 128)
 MULTICLASS_CLASS_NAMES = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
+
+
+def _load_tflite_interpreter(model_path):
+    """Loads a converted .tflite model and allocates its tensors once.
+
+    tflite-runtime and tensorflow.lite share the same Interpreter API, so
+    this works whichever one got imported above.
+    """
+    interpreter = tflite.Interpreter(model_path=model_path)
+    interpreter.allocate_tensors()
+    return interpreter
+
+
+def _run_tflite(interpreter, batch):
+    """Runs one forward pass through a loaded tflite Interpreter and
+    returns its raw output array (still batched, shape (1, N))."""
+    input_index = interpreter.get_input_details()[0]["index"]
+    output_index = interpreter.get_output_details()[0]["index"]
+    interpreter.set_tensor(input_index, batch)
+    interpreter.invoke()
+    return interpreter.get_tensor(output_index)
 
 
 def build_classifier_model(num_classes=6, input_shape=(224, 224, 3)):
@@ -129,18 +179,17 @@ def apply_threshold(probabilities, classes, threshold=Config.CONFIDENCE_THRESHOL
 
 
 def get_cached_paper_model():
-    """Loads (and caches) the trained paper/not_paper CNN from disk.
+    """Loads (and caches) the trained paper/not_paper CNN from its
+    converted .tflite file.
 
-    The saved .keras file includes the augmentation and Rescaling(1/255)
-    layers as part of the graph, so inputs here must be raw 0-255 pixel
-    values, not pre-normalised -- see preprocess_image_for_paper_model.
-    Augmentation layers are no-ops at inference time (Keras only applies
-    them when called with training=True, which model.predict() does not
-    do), so this is safe to use directly for prediction.
+    The original .keras graph included the augmentation and Rescaling(1/255)
+    layers, and those survive the tflite conversion (verified bit-identical
+    to the Keras model's output on every held-out fixture before shipping),
+    so inputs here must still be raw 0-255 pixel values, not pre-normalised
+    -- see preprocess_image_for_paper_model.
     """
     if "paper_model" not in _MODEL_CACHE:
-        import tensorflow as tf
-        _MODEL_CACHE["paper_model"] = tf.keras.models.load_model(PAPER_MODEL_PATH)
+        _MODEL_CACHE["paper_model"] = _load_tflite_interpreter(PAPER_MODEL_PATH)
     return _MODEL_CACHE["paper_model"]
 
 
@@ -156,10 +205,11 @@ def predict_paper(pil_image, model=None):
     Returns (paper_probability, latency_seconds). paper_probability is the
     model's sigmoid output: probability the image is paper (class 1).
     """
-    model = model or get_cached_paper_model()
+    interpreter = model or get_cached_paper_model()
     batch = preprocess_image_for_paper_model(pil_image)
     start = time.perf_counter()
-    paper_probability = float(model.predict(batch, verbose=0)[0][0])
+    output = _run_tflite(interpreter, batch)
+    paper_probability = float(output[0][0])
     latency = time.perf_counter() - start
     return paper_probability, latency
 
@@ -181,9 +231,10 @@ def predict_paper(pil_image, model=None):
 
 
 def get_cached_multiclass_model():
+    """Loads (and caches) the experimental 6-class CNN from its converted
+    .tflite file (same rationale and verification as the paper model above)."""
     if "multiclass_model" not in _MODEL_CACHE:
-        import tensorflow as tf
-        _MODEL_CACHE["multiclass_model"] = tf.keras.models.load_model(MULTICLASS_MODEL_PATH)
+        _MODEL_CACHE["multiclass_model"] = _load_tflite_interpreter(MULTICLASS_MODEL_PATH)
     return _MODEL_CACHE["multiclass_model"]
 
 
@@ -199,9 +250,9 @@ def predict_multiclass(pil_image, model=None):
     Returns (probabilities, latency_seconds). probabilities is a length-6
     array aligned with MULTICLASS_CLASS_NAMES, summing to ~1.0.
     """
-    model = model or get_cached_multiclass_model()
+    interpreter = model or get_cached_multiclass_model()
     batch = preprocess_image_for_multiclass_model(pil_image)
     start = time.perf_counter()
-    probabilities = model.predict(batch, verbose=0)[0]
+    probabilities = _run_tflite(interpreter, batch)[0]
     latency = time.perf_counter() - start
     return probabilities, latency

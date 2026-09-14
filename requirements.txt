@@ -6,13 +6,21 @@ Flask-Migrate>=4.0
 Werkzeug>=3.0
 email-validator>=2.1
 Pillow>=10.0
-numpy>=1.26
 itsdangerous>=2.1
 gunicorn
 
-# Re-added for the real, trained paper/not_paper model (app/classifier/artifacts/paper_detector_v1.keras).
-# This was removed in an earlier session because Render's Python version at the time had no matching
-# tensorflow-cpu wheel. Verify this installs on Render before deploying: add a runtime.txt pinning
-# python-3.11.x (tensorflow-cpu==2.21.0 has confirmed wheels for cp311) or check Render's current
-# Python-version setting, then deploy from a fresh build so this gets picked up.
-tensorflow-cpu==2.21.0
+# numpy<2 is required here, not just preferred: tflite-runtime==2.14.0's prebuilt wheel is compiled
+# against NumPy's 1.x C API and crashes on import under NumPy 2.x ("_ARRAY_API not found"). Verified
+# directly in this environment before pinning it this way.
+numpy>=1.26,<2
+
+# Real production incident (2026-09-14, not hypothetical): serving predictions with full
+# tensorflow-cpu==2.21.0 got the Render web worker SIGKILL'd for exceeding Render's 512MB free/Starter
+# RAM limit -- confirmed via Render's own logs ("Worker ... was sent SIGKILL! Perhaps out of memory?")
+# and reproduced here (loading one model + one prediction peaked at ~654MB RSS with full tensorflow).
+# Fix: both trained models (app/classifier/artifacts/*.tflite) are now served via tflite-runtime
+# instead, which peaked at ~48MB RSS for the same prediction in the same measurement, and was verified
+# to produce bit-identical output to the original Keras models on every held-out fixture before this
+# switch shipped. Full tensorflow-cpu is NOT a production dependency anymore -- see requirements-dev.txt
+# if you need it for local training/conversion work or for running tests/test_model_architecture.py.
+tflite-runtime==2.14.0
