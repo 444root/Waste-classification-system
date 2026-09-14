@@ -1,5 +1,0 @@
-Forward-pass latency of the randomly-initialised architecture (untrained; CPU-only sandbox)
-n = 30
-median = 69.5 ms
-min = 65.9 ms, max = 107.2 ms
-mean = 73.4 ms, stdev = 11.2 ms

@@ -1,6 +1,13 @@
+node_modules/
+.next/
+dist/
+.turbo/
+.env
+.env.local
 __pycache__/
 *.pyc
+.venv/
 .pytest_cache/
-instance/*.db
-/screenshots/*.png
-node_modules/
+.DS_Store
+model-cache/
+

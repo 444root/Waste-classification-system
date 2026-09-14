@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: waste
+      POSTGRES_USER: waste
+      POSTGRES_PASSWORD: waste
+    ports:
+      - "5432:5432"
+    volumes:
+      - waste-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waste -d waste"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  classifier:
+    build:
+      context: .
+      dockerfile: apps/classifier/Dockerfile
+    environment:
+      MODEL_REPO: karthikeya09/smart_image_recognation
+      MODEL_FILE: best_model.pth
+      CONFIDENCE_THRESHOLD: "0.70"
+      HF_HOME: /models
+    ports:
+      - "8000:8000"
+    volumes:
+      - waste-model-cache:/models
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: "4000"
+      DATABASE_URL: postgresql://waste:waste@postgres:5432/waste
+      JWT_SECRET: local-development-secret-change-me
+      FRONTEND_URL: http://localhost:3000
+      CLASSIFIER_URL: http://classifier:8000
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      classifier:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  waste-postgres:
+  waste-model-cache:
+

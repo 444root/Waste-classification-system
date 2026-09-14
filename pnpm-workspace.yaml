@@ -1,0 +1,10 @@
+packages:
+  - "apps/api"
+  - "apps/web"
+
+onlyBuiltDependencies:
+  - argon2
+  - sharp
+allowBuilds:
+  argon2: true
+  sharp: true

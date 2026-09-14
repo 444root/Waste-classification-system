@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: waste
+      POSTGRES_USER: waste
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - waste-postgres:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waste -d waste"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  classifier:
+    build:
+      context: .
+      dockerfile: apps/classifier/Dockerfile
+    restart: unless-stopped
+    environment:
+      MODEL_REPO: karthikeya09/smart_image_recognation
+      MODEL_FILE: best_model.pth
+      CONFIDENCE_THRESHOLD: "0.70"
+      HF_HOME: /models
+    volumes:
+      - waste-model-cache:/models
+    networks: [internal]
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgresql://waste:${POSTGRES_PASSWORD}@postgres:5432/waste
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: https://${WEB_DOMAIN}
+      CLASSIFIER_URL: http://classifier:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      classifier:
+        condition: service_started
+    networks: [internal, dokploy-network]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.waste-api.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.waste-api.entrypoints=websecure
+      - traefik.http.routers.waste-api.tls.certresolver=letsencrypt
+      - traefik.http.services.waste-api.loadbalancer.server.port=4000
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+    restart: unless-stopped
+    depends_on: [api]
+    networks: [internal, dokploy-network]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.waste-web.rule=Host(`${WEB_DOMAIN}`)
+      - traefik.http.routers.waste-web.entrypoints=websecure
+      - traefik.http.routers.waste-web.tls.certresolver=letsencrypt
+      - traefik.http.services.waste-web.loadbalancer.server.port=3000
+
+volumes:
+  waste-postgres:
+  waste-model-cache:
+
+networks:
+  internal:
+  dokploy-network:
+    external: true
+
