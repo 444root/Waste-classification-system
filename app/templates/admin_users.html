@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Admin: users{% endblock %}
+{% block content %}
+  <h1>Administration</h1>
+
+  <h2>Users</h2>
+  <table class="card">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.email }}</td>
+          <td>{{ u.role }}</td>
+          <td>{{ u.status }}</td>
+          <td>
+            <form method="post" action="{{ url_for('main.admin_users_update', user_id=u.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="status" value="{{ 'suspended' if u.status == 'active' else 'active' }}">
+              <button class="btn secondary" type="submit">
+                {{ "Suspend" if u.status == "active" else "Reactivate" }}
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Pending upgrade requests</h2>
+  {% if pending_upgrades %}
+    <table class="card">
+      <thead><tr><th>User</th><th>Requested plan</th><th>Submitted</th></tr></thead>
+      <tbody>
+        {% for req in pending_upgrades %}
+          <tr>
+            <td>{{ req.user.email }}</td>
+            <td>{{ req.requested_plan.name }}</td>
+            <td>{{ req.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="card">No pending upgrade requests.</div>
+  {% endif %}
+{% endblock %}

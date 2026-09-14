@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Correct classification{% endblock %}
+{% block content %}
+  <h1>Correct classification #{{ prediction.id }}</h1>
+  <p class="lead">
+    Original prediction: {{ prediction.predicted_class or "none (model unavailable)" }}
+    {% if prediction.confidence is not none %}({{ "%.0f%%"|format(prediction.confidence * 100) }}){% endif %}.
+    The original record is never overwritten -- your correction is stored as a linked
+    feedback record (Technical Documentation, Section 12: "Data model").
+  </p>
+  <div class="card" style="max-width:420px;">
+    <form class="stacked" method="post" action="{{ url_for('main.feedback', prediction_id=prediction.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="corrected_class">Correct category</label>
+      <select id="corrected_class" name="corrected_class" required>
+        {% for category in categories %}
+          <option value="{{ category }}">{{ category.replace('_', ' ')|title }}</option>
+        {% endfor %}
+      </select>
+      <label for="comment">Comment (optional)</label>
+      <textarea id="comment" name="comment" rows="3"></textarea>
+      <button class="btn" type="submit" id="feedback-submit-btn" style="margin-top:18px;">Submit correction</button>
+    </form>
+  </div>
+{% endblock %}

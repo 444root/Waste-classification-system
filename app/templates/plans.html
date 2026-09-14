@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Plans{% endblock %}
+{% block content %}
+  <h1>Plans</h1>
+  <p class="lead">Actual payment collection is deferred for this MVP; upgrades are approved manually by an administrator.</p>
+  <div class="grid">
+    {% for plan in plans %}
+      <div class="card">
+        <strong>{{ plan.name }}</strong>{% if current_plan and current_plan.id == plan.id %} <span class="badge accepted">Current</span>{% endif %}
+        <p class="lead">RWF {{ plan.price_rwf }} / month</p>
+        <p class="lead">{{ plan.scan_limit }} classifications per period &middot; {{ plan.history_days }}-day history</p>
+        {% if current_user.is_authenticated and (not current_plan or current_plan.id != plan.id) %}
+          <form method="post" action="{{ url_for('main.request_plan', plan_id=plan.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn secondary" type="submit">Request upgrade</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

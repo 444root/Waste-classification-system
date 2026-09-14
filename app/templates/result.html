@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Classification result{% endblock %}
+{% block content %}
+  <h1>Classification result</h1>
+
+  {% if status == "model_unavailable" %}
+    <div class="card">
+      <span class="badge unavailable">Model unavailable</span>
+      <p style="margin-top:14px;">{{ message }}</p>
+      <p class="lead">Record #{{ prediction_id }} has been saved to your history for traceability.</p>
+    </div>
+  {% elif status == "accepted" %}
+    <div class="card">
+      <span class="badge accepted">Accepted</span>
+    </div>
+  {% else %}
+    <div class="card">
+      <span class="badge uncertain">Uncertain</span>
+      <p>{{ message }}</p>
+    </div>
+  {% endif %}
+
+  <a class="btn secondary" href="{{ url_for('main.classify') }}">Classify another item</a>
+  <a class="btn secondary" href="{{ url_for('main.history') }}">View history</a>
+{% endblock %}

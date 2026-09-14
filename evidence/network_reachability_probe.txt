@@ -1,0 +1,39 @@
+Network reachability probe -- run from the development sandbox, 2026-09-14
+
+Purpose: determine, before deciding how to build the classification model,
+whether this environment could download (a) a public waste-image dataset
+or (b) pretrained ImageNet weights for MobileNetV2.
+
+Host                                          Purpose                         Result
+--------------------------------------------  ------------------------------  -----------------
+raw.githubusercontent.com                     GitHub raw file content         200 OK (text only)
+api.github.com                                GitHub API                     200 (metadata only; repo
+                                                                                content access blocked --
+                                                                                "GitHub access to this
+                                                                                repository is not enabled
+                                                                                for this session")
+codeload.github.com                           GitHub zip/tarball downloads    403 Forbidden
+github.com (root)                              GitHub web/API                 400/403
+objects.githubusercontent.com                  GitHub release assets          404 (path-dependent; a
+                                                                                known real release asset
+                                                                                URL also failed, 404)
+huggingface.co                                 Hugging Face Hub               connect_rejected
+                                                                                (proxy policy)
+storage.googleapis.com                         Keras application weights,     connect_rejected
+                                                TensorFlow Hub                 (proxy policy)
+download.pytorch.org                           PyTorch Hub model weights      connect_rejected
+                                                                                (proxy policy)
+www.kaggle.com                                 Kaggle datasets                connect_rejected
+                                                                                (proxy policy)
+archive.org                                    Internet Archive mirrors       connect_rejected
+                                                                                (proxy policy)
+pypi.org / files.pythonhosted.org              Python package installation    200 OK (direct, not
+                                                                                proxied)
+
+Conclusion: TrashNet's own hosted dataset archive, every Kaggle waste-
+classification dataset, and every host that serves pretrained MobileNetV2
+ImageNet weights (Keras applications, TensorFlow Hub, PyTorch Hub, Hugging
+Face) were unreachable from this sandbox. Only Python/Node package
+registries and plain-text GitHub file content could be reached. This is why
+app/classifier/inference.py builds MobileNetV2 with weights=None and why no
+classification-accuracy result appears anywhere in Chapter Four.

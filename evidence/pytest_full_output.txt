@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/claude/waste-classifier
+plugins: anyio-4.13.0
+collecting ... collected 31 items
+
+tests/test_admin_rbac.py::test_authz01_regular_user_cannot_reach_admin_page PASSED [  3%]
+tests/test_admin_rbac.py::test_authz02_anonymous_user_cannot_reach_admin_api PASSED [  6%]
+tests/test_admin_rbac.py::test_adm01_admin_can_suspend_a_user PASSED     [  9%]
+tests/test_admin_rbac.py::test_adm02_suspended_user_denied_after_next_request PASSED [ 12%]
+tests/test_admin_rbac.py::test_authz03_user_cannot_submit_feedback_on_anothers_prediction PASSED [ 16%]
+tests/test_auth.py::test_auth01_register_creates_user_with_free_plan PASSED [ 19%]
+tests/test_auth.py::test_auth02_duplicate_email_rejected_generically PASSED [ 22%]
+tests/test_auth.py::test_auth03_short_password_rejected PASSED           [ 25%]
+tests/test_auth.py::test_auth04_wrong_password_gives_generic_error PASSED [ 29%]
+tests/test_auth.py::test_auth05_login_then_logout_denies_dashboard PASSED [ 32%]
+tests/test_auth.py::test_auth06_suspended_account_cannot_log_in PASSED   [ 35%]
+tests/test_classification_flow.py::test_cls01_valid_upload_is_logged_and_reports_model_unavailable PASSED [ 38%]
+tests/test_classification_flow.py::test_cls02_invalid_extension_rejected_and_not_logged PASSED [ 41%]
+tests/test_classification_flow.py::test_cls03_history_shows_logged_record PASSED [ 45%]
+tests/test_classification_flow.py::test_fb01_feedback_can_be_submitted_and_preserves_original PASSED [ 48%]
+tests/test_classification_flow.py::test_sub01_quota_exhaustion_blocks_further_classification PASSED [ 51%]
+tests/test_classification_flow.py::test_sub02_failed_validation_does_not_consume_quota PASSED [ 54%]
+tests/test_model_architecture.py::test_arch01_model_builds_with_expected_output_shape PASSED [ 58%]
+tests/test_model_architecture.py::test_arch02_preprocessing_produces_expected_tensor_shape PASSED [ 61%]
+tests/test_model_architecture.py::test_arch03_forward_pass_returns_valid_probability_distribution PASSED [ 64%]
+tests/test_model_architecture.py::test_arch04_threshold_rejects_low_confidence PASSED [ 67%]
+tests/test_model_architecture.py::test_arch05_threshold_accepts_high_confidence PASSED [ 70%]
+tests/test_security.py::test_sec01_registration_without_csrf_token_is_rejected PASSED [ 74%]
+tests/test_security.py::test_sec02_registration_with_valid_csrf_token_succeeds PASSED [ 77%]
+tests/test_security.py::test_sec03_session_cookie_is_httponly PASSED     [ 80%]
+tests/test_validators.py::test_val01_valid_jpeg_is_accepted PASSED       [ 83%]
+tests/test_validators.py::test_val02_missing_file_rejected PASSED        [ 87%]
+tests/test_validators.py::test_val03_disallowed_extension_rejected PASSED [ 90%]
+tests/test_validators.py::test_val04_oversized_file_rejected PASSED      [ 93%]
+tests/test_validators.py::test_val05_corrupt_payload_with_jpg_extension_rejected PASSED [ 96%]
+tests/test_validators.py::test_val06_png_is_accepted PASSED              [100%]
+
+============================== 31 passed in 9.32s ==============================
