@@ -12,6 +12,10 @@
   {% elif status == "accepted" %}
     <div class="card">
       <span class="badge accepted">Accepted</span>
+      <p style="margin-top:14px;"><strong>Category:</strong> {{ category.replace('_', ' ')|title }}</p>
+      <p><strong>Confidence:</strong> {{ "%.0f"|format(confidence * 100) }}%</p>
+      {% if guidance_text %}<p class="lead">{{ guidance_text }}</p>{% endif %}
+      <p class="lead">Record #{{ prediction_id }} has been saved to your history.</p>
     </div>
   {% else %}
     <div class="card">

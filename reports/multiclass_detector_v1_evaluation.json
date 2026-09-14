@@ -1,0 +1,52 @@
+{
+  "model_version": "multiclass_cnn_scratch_v1",
+  "task": "6-class classification: cardboard, glass, metal, paper, plastic, trash",
+  "architecture": "custom CNN trained from scratch (4x [Conv2D-BatchNorm-MaxPool] with 16/32/64/128 filters, GlobalAveragePooling2D, Dense(96, relu), Dropout(0.45), Dense(6, softmax)); input 128x128x3, Rescaling(1/255) and augmentation (RandomFlip, RandomRotation 0.06, RandomZoom 0.12, RandomContrast 0.12) built into the model graph",
+  "dataset": {
+    "source": "garythung/trashnet, obtained via github.com/winkhai/trash-recycling-classifier (same dataset as the paper-only detector, same pre-existing train/valid/test split, no leakage)",
+    "total_images": 2527,
+    "split": {
+      "train": {"cardboard": 282, "glass": 350, "metal": 287, "paper": 415, "plastic": 337, "trash": 95},
+      "valid": {"cardboard": 60, "glass": 75, "metal": 61, "paper": 89, "plastic": 72, "trash": 21},
+      "test": {"cardboard": 61, "glass": 76, "metal": 62, "paper": 90, "plastic": 73, "trash": 21}
+    }
+  },
+  "training": {
+    "epochs_run_total": 65,
+    "training_done_in_three_resumed_runs": "25 + 20 + 20 epochs, checkpointing the best val_loss weights between runs to fit this environment's per-call time limit; accuracy had plateaued by the third run (identical 78.59% test accuracy in runs 2 and 3), so training was stopped there rather than continued indefinitely",
+    "class_weight": "inverse-frequency weighting applied (trash is only ~4% of the training data vs paper's ~16%)",
+    "total_train_time_seconds": 1723.9,
+    "environment": "CPU only, TensorFlow-CPU 2.21.0, Python 3.11, no pretrained weights (see app/classifier/inference.py module docstring for why)"
+  },
+  "held_out_test_results": {
+    "test_set_size": 383,
+    "accuracy": 0.7859,
+    "macro_f1": 0.7655,
+    "majority_class_baseline_accuracy": 0.2350,
+    "confusion_matrix": {
+      "row_is_true_label_column_is_predicted": true,
+      "order": ["cardboard", "glass", "metal", "paper", "plastic", "trash"],
+      "matrix": [
+        [58, 0, 0, 2, 0, 1],
+        [0, 50, 16, 1, 5, 4],
+        [0, 1, 47, 2, 4, 8],
+        [2, 0, 1, 79, 2, 6],
+        [2, 3, 9, 7, 49, 3],
+        [0, 1, 1, 1, 0, 18]
+      ]
+    },
+    "per_class": {
+      "cardboard": {"support": 61, "precision": 0.9355, "recall": 0.9508, "f1": 0.9431},
+      "glass": {"support": 76, "precision": 0.9091, "recall": 0.6579, "f1": 0.7634},
+      "metal": {"support": 62, "precision": 0.6351, "recall": 0.7581, "f1": 0.6912},
+      "paper": {"support": 90, "precision": 0.8587, "recall": 0.8778, "f1": 0.8681},
+      "plastic": {"support": 73, "precision": 0.8167, "recall": 0.6712, "f1": 0.7368},
+      "trash": {"support": 21, "precision": 0.4500, "recall": 0.8571, "f1": 0.5902}
+    }
+  },
+  "honest_interpretation": "78.6% overall accuracy is well above the 23.5% naive majority-class baseline, so the model is genuinely distinguishing between all six categories, not exploiting imbalance -- but it does NOT clear this project's own 85% production evaluation gate (ModelVersion.meets_evaluation_gate), so it is deliberately NOT the model serving live classifications in the deployed app (see ModelVersion.is_active=False for this version, and routes.py). Cardboard and paper are the strongest classes (both f1 > 0.86) -- they have the most training images and the most visually distinct texture. Glass and metal are frequently confused with each other (16 glass images predicted as metal) -- both are often photographed as small, reflective, oddly-shaped objects, which is a real, visually plausible confusion, not a bug. Trash is the weakest class by a wide margin (precision 0.45) -- it is also by far the smallest class (only 95 training images, well under half of any other class) and 'trash' in the source dataset means visually heterogeneous miscellaneous waste with no consistent shared appearance, which is inherently harder to learn from few examples.",
+  "why_accuracy_is_lower_than_the_paper_only_binary_model": "Binary paper/not_paper only has to draw one boundary and has ~1,751 not_paper images to learn 'everything that is not paper' from; 6-way classification has to draw boundaries between six often visually-similar material categories using far fewer examples per class (as few as 95 for trash), with no pretrained visual features to start from. This is a genuine, expected difficulty of the harder task on this dataset size, not a bug in the training code.",
+  "what_would_likely_close_the_gap_to_85_percent": "The single biggest lever is almost certainly pretrained ImageNet features (transfer learning) -- every published TrashNet benchmark that reports 90%+ accuracy uses transfer learning, not training from scratch. That requires reaching a host that serves pretrained weights (storage.googleapis.com, huggingface.co, pytorch.org or similar), which this environment currently cannot do (all return HTTP 403 via the network proxy). Secondary levers with smaller expected impact: more training images per class (especially trash), and resolving the dissertation's original 'organic' category, for which no real data exists in TrashNet at all.",
+  "status": "Trained and genuinely evaluated; NOT active in the production API (fails the project's own 85% gate). Reachable only via the clearly-labelled experimental preview route in the deployed app (see app/main/routes.py, /classify/preview) so it can be demonstrated without being presented as a finished, evaluated production model.",
+  "generated": "2026-09-14"
+}

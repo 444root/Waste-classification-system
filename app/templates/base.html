@@ -13,6 +13,7 @@
       {% if current_user.is_authenticated %}
         <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
         <a href="{{ url_for('main.classify') }}">Classify</a>
+        <a href="{{ url_for('main.classify_preview') }}">Classify (experimental)</a>
         <a href="{{ url_for('main.history') }}">History</a>
         <a href="{{ url_for('main.plans_page') }}">Plans</a>
         {% if current_user.is_admin %}<a href="{{ url_for('main.admin_users_page') }}">Admin</a>{% endif %}

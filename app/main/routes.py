@@ -11,7 +11,7 @@ from flask_login import login_required, current_user
 
 from app.extensions import db
 from app.models import Prediction, Plan, User, UpgradeRequest
-from app.classifier.routes import _quota_status, DISPOSAL_GUIDANCE
+from app.classifier.routes import _quota_status, DISPOSAL_GUIDANCE, _active_model_version
 from app.classifier.validators import validate_upload, UploadValidationError
 from app.utils import admin_required
 
@@ -44,7 +44,12 @@ def dashboard():
 def classify():
     if request.method == "GET":
         subscription, plan, used, remaining = _quota_status(current_user)
-        return render_template("upload.html", plan=plan, remaining=remaining)
+        active_model = _active_model_version()
+        model_ready = active_model is not None and active_model.meets_evaluation_gate()
+        return render_template(
+            "upload.html", plan=plan, remaining=remaining,
+            model_ready=model_ready, active_model=active_model,
+        )
 
     from app.classifier.routes import create_classification  # reuse the JSON logic
     response, status_code = create_classification()
@@ -62,7 +67,32 @@ def classify():
         status=body.get("status", "unknown"),
         message=body.get("message"),
         prediction_id=body.get("prediction_id"),
-        guidance=DISPOSAL_GUIDANCE,
+        category=body.get("category"),
+        confidence=body.get("confidence"),
+        guidance_text=DISPOSAL_GUIDANCE.get(body.get("category")) if body.get("category") else None,
+    )
+
+
+@main_bp.route("/classify/preview", methods=["GET", "POST"])
+@login_required
+def classify_preview():
+    """Experimental 6-class model preview -- see
+    app/classifier/routes.py:preview_multiclass for why this is kept
+    separate from the main, gated /classify flow."""
+    if request.method == "GET":
+        return render_template("preview_multiclass.html")
+
+    from app.classifier.routes import preview_multiclass
+    response, status_code = preview_multiclass()
+    body = response.get_json()
+
+    if status_code == 400:
+        flash(body.get("message", "The image could not be processed."), "error")
+        return redirect(url_for("main.classify_preview"))
+
+    return render_template(
+        "preview_multiclass.html",
+        result=body,
     )
 
 

@@ -15,6 +15,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 
 from app.extensions import db
 from app.models import User, Plan, Subscription
+from app.utils import generate_reset_token, verify_reset_token, send_email, record_audit
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -86,6 +87,66 @@ def login():
 
     login_user(user)
     return redirect(url_for("main.dashboard"))
+
+
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "GET":
+        return render_template("forgot_password.html")
+
+    email = normalize_email(request.form.get("email") or "")
+    user = User.query.filter_by(email=email).first() if EMAIL_RE.match(email) else None
+
+    if user is not None and user.is_active_account:
+        token = generate_reset_token(user)
+        reset_url = url_for("auth.reset_password", token=token, _external=True)
+        send_email(
+            to_address=user.email,
+            subject="Reset your Waste Classification System password",
+            body=(
+                f"Hello {user.name},\n\n"
+                f"Use the link below to reset your password. It expires in 1 hour and can "
+                f"only be used once.\n\n{reset_url}\n\n"
+                f"If you didn't request this, you can safely ignore this email."
+            ),
+        )
+
+    # Same message whether or not the account exists, to avoid revealing
+    # which email addresses are registered (same principle as login/register
+    # above -- generic messages that don't leak account existence).
+    flash(
+        "If an account exists for that email address, a password reset link has been sent.",
+        "success",
+    )
+    return redirect(url_for("auth.login"))
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    user = verify_reset_token(token)
+    if user is None:
+        flash("That password reset link is invalid or has expired. Please request a new one.", "error")
+        return redirect(url_for("auth.forgot_password"))
+
+    if request.method == "GET":
+        return render_template("reset_password.html", token=token)
+
+    password = request.form.get("password") or ""
+    confirm_password = request.form.get("confirm_password") or ""
+
+    if not password_is_acceptable(password):
+        flash("Password must be at least 8 characters long.", "error")
+        return render_template("reset_password.html", token=token), 400
+    if password != confirm_password:
+        flash("Passwords do not match.", "error")
+        return render_template("reset_password.html", token=token), 400
+
+    user.set_password(password)
+    db.session.commit()
+    record_audit(actor_user_id=user.id, action="password_reset", target_type="user", target_id=user.id)
+
+    flash("Your password has been reset. Please log in with your new password.", "success")
+    return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/logout", methods=["POST"])

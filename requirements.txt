@@ -7,4 +7,12 @@ Werkzeug>=3.0
 email-validator>=2.1
 Pillow>=10.0
 numpy>=1.26
+itsdangerous>=2.1
 gunicorn
+
+# Re-added for the real, trained paper/not_paper model (app/classifier/artifacts/paper_detector_v1.keras).
+# This was removed in an earlier session because Render's Python version at the time had no matching
+# tensorflow-cpu wheel. Verify this installs on Render before deploying: add a runtime.txt pinning
+# python-3.11.x (tensorflow-cpu==2.21.0 has confirmed wheels for cp311) or check Render's current
+# Python-version setting, then deploy from a fresh build so this gets picked up.
+tensorflow-cpu==2.21.0

@@ -23,10 +23,24 @@ DISPOSAL_GUIDANCE = {
     "organic": "Place in the organic or compost stream where available.",
     "plastic": "Empty and clean where possible; use the plastic recycling stream.",
     "paper": "Keep dry and place in the paper or cardboard stream.",
+    "cardboard": "Flatten and keep dry; use the paper/cardboard recycling stream.",
     "metal": "Use the metal recycling stream and avoid sharp exposed edges.",
     "glass": "Use the glass stream and handle broken glass safely.",
     "general_trash": "Use the general waste stream.",
+    "trash": "No suitable recycling stream identified; use the general waste stream.",
+    "not_paper": (
+        "This build can only confirm whether an item is paper so far -- it isn't yet trained "
+        "to tell plastic, metal, glass and organic waste apart. Please sort this item by hand "
+        "for now; multi-category detection is planned next."
+    ),
 }
+
+# Marks a ModelVersion.version string as belonging to the real, trained
+# binary paper/not_paper detector (see app/classifier/inference.py) rather
+# than the still-untrained 6-class architecture. A naming convention was
+# used instead of a new database column to avoid a migration for a single
+# boolean flag.
+PAPER_BINARY_VERSION_PREFIX = "paper_binary_"
 
 
 def _current_period_key():
@@ -72,7 +86,7 @@ def create_classification():
         }), 429
 
     try:
-        validate_upload(request.files.get("image"))
+        image = validate_upload(request.files.get("image"))
     except UploadValidationError as exc:
         # Failed validation must not consume quota (Section 11).
         return jsonify({"error": exc.code, "message": exc.message}), 400
@@ -106,8 +120,53 @@ def create_classification():
             ),
         }), 503
 
-    # Reachable once a ModelVersion clears the evaluation gate (out of
-    # scope for this build -- see Chapter Four, Section 4.4).
+    if active_model.version.startswith(PAPER_BINARY_VERSION_PREFIX):
+        # Real inference path -- see app/classifier/inference.py and
+        # reports/paper_detector_v1_evaluation.json for what this model
+        # actually is and how it was evaluated.
+        from app.classifier.inference import predict_paper
+
+        paper_probability, latency_seconds = predict_paper(image)
+        is_paper = paper_probability >= 0.5
+        confidence = paper_probability if is_paper else (1.0 - paper_probability)
+        category = "paper" if is_paper else "not_paper"
+        accepted = confidence >= active_model.threshold
+
+        prediction = Prediction(
+            user_id=current_user.id,
+            model_version_id=active_model.id,
+            predicted_class=category if accepted else None,
+            confidence=confidence,
+            is_uncertain=not accepted,
+            is_placeholder=False,
+        )
+        db.session.add(prediction)
+        db.session.add(UsageEvent(user_id=current_user.id, event_type="classification",
+                                   quantity=1, period_key=_current_period_key()))
+        db.session.commit()
+
+        if not accepted:
+            return jsonify({
+                "prediction_id": prediction.id,
+                "status": "uncertain",
+                "message": (
+                    f"The model was not confident enough to accept this result "
+                    f"(confidence {confidence:.2f}, threshold {active_model.threshold:.2f})."
+                ),
+            }), 200
+
+        return jsonify({
+            "prediction_id": prediction.id,
+            "status": "accepted",
+            "category": category,
+            "confidence": confidence,
+            "latency_seconds": latency_seconds,
+            "guidance": DISPOSAL_GUIDANCE.get(category),
+        }), 200
+
+    # Reachable only for a hypothetical future ModelVersion that isn't the
+    # paper-binary detector and isn't the untrained 6-class build -- not
+    # reachable by anything currently seeded (see Chapter Four, Section 4.4).
     return jsonify({"error": "not_implemented"}), 501
 
 
@@ -181,3 +240,44 @@ def statistics():
         "uncertain_count": uncertain,
         "by_category": {category: count for category, count in rows},
     })
+
+
+@classifier_bp.route("/classifications/preview-multiclass", methods=["POST"])
+@login_required_json
+def preview_multiclass():
+    """Experimental 6-class preview -- deliberately NOT gated like
+    create_classification() above, and deliberately NOT logged to
+    Prediction/UsageEvent history or counted against quota, because this
+    model has real, disclosed accuracy (78.6% held-out) that does not
+    clear the project's own 85% production bar (see
+    reports/multiclass_detector_v1_evaluation.json). It exists so the
+    real, working multi-class model can be demonstrated honestly -- with
+    its real numbers alongside it -- rather than hidden until it clears
+    the gate.
+    """
+    try:
+        image = validate_upload(request.files.get("image"))
+    except UploadValidationError as exc:
+        return jsonify({"error": exc.code, "message": exc.message}), 400
+
+    from app.classifier.inference import predict_multiclass, MULTICLASS_CLASS_NAMES
+
+    probabilities, latency_seconds = predict_multiclass(image)
+    ranked = sorted(
+        zip(MULTICLASS_CLASS_NAMES, (float(p) for p in probabilities)),
+        key=lambda pair: pair[1], reverse=True,
+    )
+
+    return jsonify({
+        "status": "experimental_preview",
+        "message": (
+            "This model is real and trained, but its held-out test accuracy (78.6%) does not "
+            "clear this project's own 85% production threshold, so it is not used for the main "
+            "classification flow or counted in your history/quota. Treat this as a preview."
+        ),
+        "top_category": ranked[0][0],
+        "top_confidence": ranked[0][1],
+        "all_probabilities": [{"category": name, "probability": prob} for name, prob in ranked],
+        "guidance": DISPOSAL_GUIDANCE.get(ranked[0][0]),
+        "latency_seconds": latency_seconds,
+    }), 200
