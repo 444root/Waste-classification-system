@@ -7,7 +7,7 @@ extension -- so a malicious file cannot masquerade as an image.
 """
 
 from io import BytesIO
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
 ALLOWED_PIL_FORMATS = {"JPEG", "PNG"}
@@ -73,4 +73,20 @@ def validate_upload(file_storage):
             "Only JPG, JPEG and PNG files are accepted.",
         )
 
-    return image.convert("RGB")
+    image = image.convert("RGB")
+
+    # Bug fix (2026-09-14): phone cameras write an EXIF orientation tag
+    # instead of physically rotating the pixel data (e.g. a photo taken in
+    # portrait mode is stored as landscape pixels + "rotate 90" metadata).
+    # PIL's Image.open() ignores that tag, so without this correction a
+    # phone photo gets resized and fed to the model sideways/upside-down --
+    # nothing like the upright, tag-free TrashNet training images (verified
+    # directly: none of tests/fixtures/*.jpg carry an orientation tag, so
+    # this path was never exercised by the existing test suite). This is
+    # the most likely reason classification looked broken specifically for
+    # photos taken with a phone. exif_transpose() is a no-op for images
+    # that carry no orientation tag (e.g. the existing test fixtures), so
+    # it cannot change any already-passing behaviour.
+    image = ImageOps.exif_transpose(image)
+
+    return image

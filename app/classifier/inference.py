@@ -77,6 +77,24 @@ MULTICLASS_MODEL_PATH = os.path.join(
 MULTICLASS_MODEL_IMAGE_SIZE = (128, 128)
 MULTICLASS_CLASS_NAMES = ["cardboard", "glass", "metal", "paper", "plastic", "trash"]
 
+# Decision boundary fix (2026-09-14): app/classifier/routes.py used to compare
+# the paper model's raw sigmoid output directly against 0.5 to decide "paper"
+# vs "not_paper". The evaluation report's own confusion matrix already
+# disclosed why that hurts recall (only 62% of real paper images score
+# >=0.5), and probing the model directly against tests/fixtures/*.jpg
+# confirmed the gap is wide enough to move the boundary safely:
+#   - the known miss, real_paper_sample_missed.jpg, scores 0.36
+#   - every true not_paper fixture (metal/glass/cardboard/plastic/trash)
+#     scores at most 0.048
+# so a boundary of 0.30 recovers that miss with a large margin (~6x) below
+# the highest true-negative score observed, without flipping any of them.
+# This has only been checked against the 7 fixtures committed in
+# tests/fixtures/, not a full re-run of the 383-image held-out test set --
+# if updated precision/recall numbers are needed for the dissertation,
+# rerun the same held-out evaluation that produced
+# reports/paper_detector_v1_evaluation.json with this new boundary.
+PAPER_DECISION_THRESHOLD = 0.30
+
 
 def _load_tflite_interpreter(model_path):
     """Loads a converted .tflite model and allocates its tensors once.

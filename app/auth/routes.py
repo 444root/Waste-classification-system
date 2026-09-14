@@ -8,9 +8,9 @@ server-side session invalidation on logout.
 """
 
 import re
-from datetime import date
+from datetime import date, datetime
 
-from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
 
 from app.extensions import db
@@ -61,8 +61,14 @@ def register():
         db.session.add(Subscription(user_id=user.id, plan_id=free_plan.id,
                                      status="active", period_start=date.today()))
 
+    # Bug fix (2026-09-14): registration is this user's first-ever
+    # authentication, so mark it as such (see login() below and
+    # app/main/routes.py dashboard()) instead of dashboard.html
+    # unconditionally saying "Welcome back".
+    user.last_login_at = datetime.utcnow()
     db.session.commit()
     login_user(user)
+    session["show_first_login_welcome"] = True
     return redirect(url_for("main.dashboard"))
 
 
@@ -85,7 +91,15 @@ def login():
         flash(generic_error, "error")
         return render_template("login.html"), 403
 
+    # Bug fix (2026-09-14): capture whether this is the account's first-ever
+    # login (last_login_at not yet set) BEFORE overwriting it, so the
+    # dashboard can show "Welcome" instead of "Welcome back" exactly once.
+    is_first_login = user.last_login_at is None
+    user.last_login_at = datetime.utcnow()
+    db.session.commit()
+
     login_user(user)
+    session["show_first_login_welcome"] = is_first_login
     return redirect(url_for("main.dashboard"))
 
 

@@ -6,7 +6,7 @@ directly demonstrable and testable end-to-end.
 
 from datetime import date
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session
 from flask_login import login_required, current_user
 
 from app.extensions import db
@@ -34,8 +34,15 @@ def dashboard():
         .limit(5)
         .all()
     )
+    # Bug fix (2026-09-14): pop (not just read) the flag set by
+    # app/auth/routes.py's register()/login(), so it only applies to the
+    # dashboard render immediately after that specific authentication --
+    # reloading the dashboard afterwards correctly goes back to "Welcome
+    # back" rather than showing "Welcome" on every reload.
+    show_first_login_welcome = session.pop("show_first_login_welcome", False)
     return render_template(
-        "dashboard.html", plan=plan, used=used, remaining=remaining, recent=recent
+        "dashboard.html", plan=plan, used=used, remaining=remaining, recent=recent,
+        show_first_login_welcome=show_first_login_welcome,
     )
 
 

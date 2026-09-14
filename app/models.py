@@ -27,6 +27,16 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), nullable=False, default="user")  # 'user' | 'admin'
     status = db.Column(db.String(20), nullable=False, default="active")  # 'active' | 'suspended'
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    # Bug fix (2026-09-14): the dashboard used to hardcode "Welcome back,
+    # {name}" even on a brand-new account's very first visit. last_login_at
+    # is null until the user's first successful authentication (see
+    # app/auth/routes.py register()/login()), which is what lets the
+    # dashboard tell a first-ever visit apart from a real return visit.
+    # Added after the tables already existed in deployed databases (no
+    # formal Alembic migration was ever set up -- see app/__init__.py's
+    # _ensure_schema, which adds this column to an existing SQLite `users`
+    # table automatically on startup if it's missing).
+    last_login_at = db.Column(db.DateTime, nullable=True)
 
     subscriptions = db.relationship("Subscription", backref="user", lazy="dynamic",
                                      foreign_keys="Subscription.user_id")

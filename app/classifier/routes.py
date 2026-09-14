@@ -124,10 +124,10 @@ def create_classification():
         # Real inference path -- see app/classifier/inference.py and
         # reports/paper_detector_v1_evaluation.json for what this model
         # actually is and how it was evaluated.
-        from app.classifier.inference import predict_paper
+        from app.classifier.inference import predict_paper, PAPER_DECISION_THRESHOLD
 
         paper_probability, latency_seconds = predict_paper(image)
-        is_paper = paper_probability >= 0.5
+        is_paper = paper_probability >= PAPER_DECISION_THRESHOLD
         confidence = paper_probability if is_paper else (1.0 - paper_probability)
         category = "paper" if is_paper else "not_paper"
         accepted = confidence >= active_model.threshold

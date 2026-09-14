@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-  <h1>Welcome back, {{ current_user.name }}</h1>
+  <h1>{% if show_first_login_welcome %}Welcome, {{ current_user.name }}!{% else %}Welcome back, {{ current_user.name }}{% endif %}</h1>
   <p class="lead">Plan: <strong>{{ plan.name if plan else "No active plan" }}</strong></p>
 
   <div class="grid">
