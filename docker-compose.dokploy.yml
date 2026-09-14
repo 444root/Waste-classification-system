@@ -1,20 +1,4 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: waste
-      POSTGRES_USER: waste
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - waste-postgres:/var/lib/postgresql/data
-    networks: [internal]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U waste -d waste"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   classifier:
     build:
       context: .
@@ -37,13 +21,14 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4000"
-      DATABASE_URL: postgresql://waste:${POSTGRES_PASSWORD}@postgres:5432/waste
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: https://${WEB_DOMAIN}
       CLASSIFIER_URL: http://classifier:8000
+      MAILEROO_API_KEY: ${MAILEROO_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Sortwise}
     depends_on:
-      postgres:
-        condition: service_healthy
       classifier:
         condition: service_started
     networks: [internal, dokploy-network]
@@ -73,11 +58,9 @@ services:
       - traefik.http.services.waste-web.loadbalancer.server.port=3000
 
 volumes:
-  waste-postgres:
   waste-model-cache:
 
 networks:
   internal:
   dokploy-network:
     external: true
-
