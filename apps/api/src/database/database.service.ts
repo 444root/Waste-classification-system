@@ -44,6 +44,24 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS password_reset_tokens_user_id_idx
         ON password_reset_tokens(user_id);
+
+      CREATE TABLE IF NOT EXISTS classification_feedback (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        predicted_category TEXT NOT NULL,
+        corrected_category TEXT NOT NULL,
+        confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+        image_path TEXT NOT NULL UNIQUE,
+        mime_type TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS classification_feedback_user_id_idx
+        ON classification_feedback(user_id);
+
+      CREATE INDEX IF NOT EXISTS classification_feedback_categories_idx
+        ON classification_feedback(predicted_category, corrected_category);
     `);
   }
 

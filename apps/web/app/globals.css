@@ -76,6 +76,12 @@ a { color: inherit; }
 .uncertain-note { border-radius: .8rem; background: #fbefce; padding: 1rem; color: #6d5214; }
 .guidance { margin: 2rem 0; }.guidance span { color: var(--forest); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }.guidance p { margin: .45rem 0 0; font-size: 1.15rem; line-height: 1.55; }
 .probabilities { display: grid; gap: .85rem; }.probabilities > div { display: grid; grid-template-columns: 9rem 1fr 3rem; gap: 1rem; align-items: center; font-size: .86rem; }.probabilities > div > div { height: .45rem; overflow: hidden; border-radius: 2rem; background: var(--mint); }.probabilities i { display: block; height: 100%; border-radius: inherit; background: var(--forest); }.probabilities b { text-align: right; }
+.feedback-card { margin-top: 2rem; border: 1px solid var(--line); border-radius: 1rem; background: linear-gradient(135deg, rgba(220,235,225,.55), rgba(255,253,247,.85)); padding: 1.25rem; }
+.feedback-title { margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", serif; font-size: 1.35rem; font-weight: 600; }
+.feedback-note { margin: .4rem 0 1rem; color: #657269; font-size: .82rem; line-height: 1.5; }
+.feedback-card select { width: 100%; margin: 1rem 0; border: 1px solid var(--line); border-radius: .75rem; background: #fff; padding: .85rem 1rem; color: var(--ink); font: inherit; }
+.feedback-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .7rem; margin-top: 1rem; }
+.feedback-success { margin: 0; color: var(--forest-dark); font-weight: 700; line-height: 1.5; }
 .model-note { margin: 2rem 0 0; color: #78847c; font-size: .75rem; line-height: 1.5; }
 .result-actions { display: flex; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
 

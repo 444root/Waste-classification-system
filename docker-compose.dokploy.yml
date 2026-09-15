@@ -29,10 +29,13 @@ services:
       MAILEROO_API_KEY: ${MAILEROO_API_KEY}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Sortwise}
+      FEEDBACK_DIR: /data/feedback
     depends_on:
       classifier:
         condition: service_started
     networks: [internal, dokploy-network]
+    volumes:
+      - waste-feedback:/data/feedback
     labels:
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
@@ -60,6 +63,7 @@ services:
 
 volumes:
   waste-model-cache:
+  waste-feedback:
 
 networks:
   internal:

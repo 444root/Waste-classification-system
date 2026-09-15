@@ -16,6 +16,16 @@ interface ClassificationResult {
   modelVersion: string;
 }
 
+const correctionOptions = [
+  ['glass', 'Glass'],
+  ['metal', 'Metal'],
+  ['general_trash', 'General trash'],
+  ['organic', 'Organic'],
+  ['paper', 'Paper'],
+  ['plastic', 'Plastic'],
+  ['other', 'Other or unsupported'],
+] as const;
+
 function label(value: string) {
   return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -28,6 +38,10 @@ export default function ClassifyPage() {
   const [result, setResult] = useState<ClassificationResult | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [feedbackMode, setFeedbackMode] = useState<'idle' | 'correcting' | 'saved'>('idle');
+  const [correctedCategory, setCorrectedCategory] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -61,6 +75,9 @@ export default function ClassifyPage() {
     setPreview(selected ? URL.createObjectURL(selected) : '');
     setResult(null);
     setError('');
+    setFeedbackMode('idle');
+    setCorrectedCategory('');
+    setFeedbackError('');
   }
 
   async function submit(event: FormEvent) {
@@ -90,8 +107,30 @@ export default function ClassifyPage() {
     setPreview('');
     setResult(null);
     setError('');
+    setFeedbackMode('idle');
+    setCorrectedCategory('');
+    setFeedbackError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function submitFeedback(actualCategory: string) {
+    if (!file || !result) return;
+    setFeedbackLoading(true);
+    setFeedbackError('');
+    const form = new FormData();
+    form.append('file', file);
+    form.append('predictedCategory', result.category);
+    form.append('correctedCategory', actualCategory);
+    form.append('confidence', String(result.confidence));
+    try {
+      await api('/classifications/feedback', { method: 'POST', body: form });
+      setFeedbackMode('saved');
+    } catch (cause) {
+      setFeedbackError(cause instanceof ApiError ? cause.message : 'Unable to save feedback');
+    } finally {
+      setFeedbackLoading(false);
+    }
   }
 
   return (
@@ -125,13 +164,40 @@ export default function ClassifyPage() {
             <button type="button" className="secondary-button" onClick={classifyAnotherItem}>Back to upload</button>
           </div>
           <div className="result-heading">
-            <div><p className="eyebrow">{result.accepted ? 'Classification result' : 'Uncertain result'}</p><h2>{label(result.category)}</h2></div>
+            <div><p className="eyebrow">{result.accepted ? 'Classification result' : 'Unsupported or uncertain item'}</p><h2>{result.accepted ? label(result.category) : 'Item not recognized'}</h2></div>
             <div className="confidence"><strong>{Math.round(result.confidence * 100)}%</strong><span>confidence</span></div>
           </div>
-          {!result.accepted && <p className="uncertain-note">This result is uncertain. The next likely material is {label(result.secondChoice)}. Try a closer, centered photo with one object and a plain background.</p>}
-          <div className="guidance"><span>Recommended next step</span><p>{result.recommendation}</p></div>
+          {!result.accepted && <p className="uncertain-note">The model cannot identify this item reliably. Its possible matches are {label(result.category)} and {label(result.secondChoice)}, but neither should be treated as the answer. Try a supported waste item or take a closer photo against a plain background.</p>}
+          <div className="guidance"><span>{result.accepted ? 'Recommended next step' : 'What to do'}</span><p>{result.accepted ? result.recommendation : 'Do not use this prediction for disposal guidance. The item may use a material, such as textile or ceramic, that the current model does not support.'}</p></div>
           <div className="probabilities">
             {probabilities.map(([name, value]) => <div key={name}><span>{label(name)}</span><div><i style={{ width: `${Math.max(value * 100, 1)}%` }} /></div><b>{Math.round(value * 100)}%</b></div>)}
+          </div>
+          <div className="feedback-card">
+            {feedbackMode === 'saved' ? (
+              <p className="feedback-success">Feedback saved. This example can now be used for model evaluation and fine-tuning.</p>
+            ) : feedbackMode === 'correcting' ? (
+              <>
+                <p className="feedback-title">What is the actual material?</p>
+                <select value={correctedCategory} onChange={(event) => setCorrectedCategory(event.target.value)}>
+                  <option value="">Select the correct material</option>
+                  {correctionOptions.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+                </select>
+                <div className="feedback-actions">
+                  <button type="button" className="secondary-button" onClick={() => setFeedbackMode('idle')} disabled={feedbackLoading}>Cancel</button>
+                  <button type="button" className="primary-button" onClick={() => submitFeedback(correctedCategory)} disabled={!correctedCategory || feedbackLoading}>{feedbackLoading ? 'Saving...' : 'Save correction'}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="feedback-title">Was this classification correct?</p>
+                <p className="feedback-note">Submitting feedback securely saves this photo so it can improve future model training.</p>
+                <div className="feedback-actions">
+                  <button type="button" className="secondary-button" onClick={() => submitFeedback(result.category)} disabled={feedbackLoading}>{feedbackLoading ? 'Saving...' : 'Yes, correct'}</button>
+                  <button type="button" className="primary-button" onClick={() => setFeedbackMode('correcting')} disabled={feedbackLoading}>No, correct it</button>
+                </div>
+              </>
+            )}
+            {feedbackError && <p className="form-error">{feedbackError}</p>}
           </div>
           <p className="model-note">Baseline model: {result.modelVersion}. This educational prediction does not replace local disposal guidance.</p>
           <div className="result-actions">
