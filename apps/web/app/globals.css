@@ -62,10 +62,14 @@ a { color: inherit; }
 .upload-panel { border: 1px solid rgba(255,255,255,.7); border-radius: 2rem; background: rgba(255,255,255,.58); padding: 1rem; box-shadow: 0 30px 80px rgba(20,34,26,.12); backdrop-filter: blur(20px); }
 .drop-zone { min-height: 430px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .65rem; overflow: hidden; border: 1.5px dashed rgba(23,107,75,.4); border-radius: 1.35rem; background: linear-gradient(145deg, rgba(220,235,225,.7), rgba(255,253,247,.6)); cursor: pointer; text-align: center; }
 .drop-zone input { position: absolute; width: 1px; height: 1px; opacity: 0; }.drop-zone small { color: #67756c; }.drop-zone img { width: 100%; height: 430px; object-fit: cover; }.upload-icon { display: grid; place-items: center; width: 4.4rem; height: 4.4rem; border-radius: 50%; background: var(--forest); color: #fff; font-size: 2.2rem; font-weight: 300; }
+.camera-guidance { margin-top: .6rem; border-radius: 2rem; background: rgba(255,255,255,.72); padding: .55rem .8rem; color: var(--forest-dark); font-size: .72rem; font-weight: 800; }
 .classify-button { width: 100%; margin-top: 1rem; }
 .upload-panel .form-error { padding: .8rem .4rem 0; }
 .result-card { max-width: 1100px; margin: 0 auto; border-radius: 1.6rem; background: var(--paper); padding: clamp(1.5rem, 4vw, 3.5rem); box-shadow: 0 25px 70px rgba(20,34,26,.12); }
 .result-card.accepted { border-top: .5rem solid var(--forest); }.result-card.uncertain { border-top: .5rem solid var(--amber); }
+.result-toolbar { display: flex; justify-content: flex-start; margin-bottom: 1.5rem; }
+.secondary-button { border: 1px solid var(--line); border-radius: .7rem; background: transparent; padding: .7rem 1rem; color: var(--forest); font-weight: 800; cursor: pointer; transition: background .2s, border-color .2s; }
+.secondary-button:hover { border-color: var(--forest); background: var(--mint); }
 .result-heading { display: flex; justify-content: space-between; gap: 2rem; align-items: end; padding-bottom: 1.8rem; border-bottom: 1px solid var(--line); }
 .result-heading h2 { margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", serif; font-size: clamp(3rem, 7vw, 5.5rem); font-weight: 500; letter-spacing: -.055em; }
 .confidence { display: grid; text-align: right; }.confidence strong { color: var(--forest); font-family: Georgia, serif; font-size: 2.8rem; }.confidence span { color: #66736b; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -73,6 +77,7 @@ a { color: inherit; }
 .guidance { margin: 2rem 0; }.guidance span { color: var(--forest); font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }.guidance p { margin: .45rem 0 0; font-size: 1.15rem; line-height: 1.55; }
 .probabilities { display: grid; gap: .85rem; }.probabilities > div { display: grid; grid-template-columns: 9rem 1fr 3rem; gap: 1rem; align-items: center; font-size: .86rem; }.probabilities > div > div { height: .45rem; overflow: hidden; border-radius: 2rem; background: var(--mint); }.probabilities i { display: block; height: 100%; border-radius: inherit; background: var(--forest); }.probabilities b { text-align: right; }
 .model-note { margin: 2rem 0 0; color: #78847c; font-size: .75rem; line-height: 1.5; }
+.result-actions { display: flex; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
 
 @media (max-width: 900px) {
   .auth-shell { grid-template-columns: 1fr; }.auth-story { min-height: 42vh; padding: 3rem 1.5rem; }.auth-story h1 { font-size: 4rem; }.auth-card { min-height: 58vh; padding: 5rem 1.5rem 2rem; }

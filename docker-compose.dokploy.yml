@@ -8,6 +8,7 @@ services:
       MODEL_REPO: karthikeya09/smart_image_recognation
       MODEL_FILE: best_model.pth
       CONFIDENCE_THRESHOLD: "0.70"
+      CONFIDENCE_MARGIN: "0.15"
       HF_HOME: /models
     volumes:
       - waste-model-cache:/models

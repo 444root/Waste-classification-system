@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ApiError, getToken, setToken, User } from '@/lib/api';
 
@@ -9,6 +9,8 @@ interface ClassificationResult {
   rawCategory: string;
   confidence: number;
   accepted: boolean;
+  secondChoice: string;
+  confidenceMargin: number;
   probabilities: Record<string, number>;
   recommendation: string;
   modelVersion: string;
@@ -26,6 +28,7 @@ export default function ClassifyPage() {
   const [result, setResult] = useState<ClassificationResult | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -41,6 +44,15 @@ export default function ClassifyPage() {
     () => result ? Object.entries(result.probabilities).sort((a, b) => b[1] - a[1]) : [],
     [result],
   );
+
+  useEffect(() => {
+    if (result) {
+      document.getElementById('classification-result')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }
+  }, [result]);
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
@@ -73,6 +85,15 @@ export default function ClassifyPage() {
     router.replace('/login');
   }
 
+  function classifyAnotherItem() {
+    setFile(null);
+    setPreview('');
+    setResult(null);
+    setError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   return (
     <main className="app-shell">
       <nav className="topbar">
@@ -84,14 +105,14 @@ export default function ClassifyPage() {
         <div className="hero-copy">
           <p className="eyebrow">Image recognition for responsible sorting</p>
           <h1>What are you<br /><em>throwing away?</em></h1>
-          <p className="hero-note">Photograph one clear waste item in good light. We will identify its material and suggest the appropriate stream.</p>
+          <p className="hero-note">Photograph one clear waste item in good light. Center it, move close, and keep other objects outside the frame. Works with iPhone and Android.</p>
           <div className="category-list"><span>Glass</span><span>Metal</span><span>General trash</span><span>Organic</span><span>Paper</span><span>Plastic</span></div>
         </div>
 
         <form className="upload-panel" onSubmit={submit}>
           <label className={`drop-zone ${preview ? 'has-image' : ''}`}>
-            {preview ? <img src={preview} alt="Selected waste item preview" /> : <><span className="upload-icon">+</span><strong>Choose a waste image</strong><small>JPG, PNG or WebP, maximum 5 MB</small></>}
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseFile} />
+            {preview ? <img src={preview} alt="Selected waste item preview" /> : <><span className="upload-icon">+</span><strong>Take or choose a waste photo</strong><small>JPG, PNG, WebP or HEIC, maximum 12 MB</small><span className="camera-guidance">One centered item. Plain background. Good light.</span></>}
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={chooseFile} />
           </label>
           <button className="primary-button classify-button" disabled={!file || loading}>{loading ? 'Looking closely...' : 'Classify this item'}</button>
           {error && <p className="form-error">{error}</p>}
@@ -99,20 +120,25 @@ export default function ClassifyPage() {
       </section>
 
       {result && (
-        <section className={`result-card ${result.accepted ? 'accepted' : 'uncertain'}`}>
+        <section id="classification-result" className={`result-card ${result.accepted ? 'accepted' : 'uncertain'}`}>
+          <div className="result-toolbar">
+            <button type="button" className="secondary-button" onClick={classifyAnotherItem}>Back to upload</button>
+          </div>
           <div className="result-heading">
             <div><p className="eyebrow">{result.accepted ? 'Classification result' : 'Uncertain result'}</p><h2>{label(result.category)}</h2></div>
             <div className="confidence"><strong>{Math.round(result.confidence * 100)}%</strong><span>confidence</span></div>
           </div>
-          {!result.accepted && <p className="uncertain-note">The confidence is below 70%. Try a closer image with one object and a plain background.</p>}
+          {!result.accepted && <p className="uncertain-note">This result is uncertain. The next likely material is {label(result.secondChoice)}. Try a closer, centered photo with one object and a plain background.</p>}
           <div className="guidance"><span>Recommended next step</span><p>{result.recommendation}</p></div>
           <div className="probabilities">
             {probabilities.map(([name, value]) => <div key={name}><span>{label(name)}</span><div><i style={{ width: `${Math.max(value * 100, 1)}%` }} /></div><b>{Math.round(value * 100)}%</b></div>)}
           </div>
           <p className="model-note">Baseline model: {result.modelVersion}. This educational prediction does not replace local disposal guidance.</p>
+          <div className="result-actions">
+            <button type="button" className="primary-button" onClick={classifyAnotherItem}>Classify another item</button>
+          </div>
         </section>
       )}
     </main>
   );
 }
-

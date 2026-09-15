@@ -9,7 +9,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ClassificationsService } from './classifications.service';
 
-const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
 
 @Controller('classifications')
 export class ClassificationsController {
@@ -19,15 +25,17 @@ export class ClassificationsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+      limits: { fileSize: 12 * 1024 * 1024, files: 1 },
     }),
   )
   classify(@UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('Choose an image to classify');
-    if (!ALLOWED_TYPES.has(file.mimetype)) {
-      throw new BadRequestException('Only JPG, PNG and WebP images are allowed');
+    const isHeifFile = /\.(heic|heif)$/i.test(file.originalname);
+    if (!ALLOWED_TYPES.has(file.mimetype) && !isHeifFile) {
+      throw new BadRequestException(
+        'Only JPG, PNG, WebP, HEIC and HEIF images are allowed',
+      );
     }
     return this.classifications.classify(file);
   }
 }
-

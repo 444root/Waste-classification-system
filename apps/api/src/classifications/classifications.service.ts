@@ -10,6 +10,8 @@ export interface ClassificationResult {
   rawCategory: string;
   confidence: number;
   accepted: boolean;
+  secondChoice: string;
+  confidenceMargin: number;
   probabilities: Record<string, number>;
   recommendation: string;
   modelVersion: string;
@@ -56,4 +58,3 @@ export class ClassificationsService {
     }
   }
 }
-
