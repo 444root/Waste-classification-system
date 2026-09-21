@@ -24,7 +24,7 @@ export interface ClassificationResult {
   createdAt?: Date;
 }
 
-interface ClassificationHistoryRow {
+export interface ClassificationHistoryRow {
   id: string;
   originalName: string;
   category: string;
