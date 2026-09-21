@@ -11,6 +11,7 @@ import { DatabaseService } from '../database/database.service';
 import { ClassificationFeedbackDto } from './dto/classification-feedback.dto';
 
 export interface ClassificationResult {
+  id?: string;
   category: string;
   rawCategory: string;
   confidence: number;
@@ -20,6 +21,17 @@ export interface ClassificationResult {
   probabilities: Record<string, number>;
   recommendation: string;
   modelVersion: string;
+  createdAt?: Date;
+}
+
+interface ClassificationHistoryRow {
+  id: string;
+  originalName: string;
+  category: string;
+  confidence: number;
+  accepted: boolean;
+  modelVersion: string;
+  createdAt: Date;
 }
 
 @Injectable()
@@ -38,7 +50,10 @@ export class ClassificationsService {
     );
   }
 
-  async classify(file: Express.Multer.File): Promise<ClassificationResult> {
+  async classify(
+    file: Express.Multer.File,
+    userId: string,
+  ): Promise<ClassificationResult> {
     const form = new FormData();
     form.append(
       'file',
@@ -58,7 +73,31 @@ export class ClassificationsService {
           `Classifier rejected the image: ${detail.slice(0, 200)}`,
         );
       }
-      return (await response.json()) as ClassificationResult;
+      const classification = (await response.json()) as ClassificationResult;
+      const id = randomUUID();
+      const saved = await this.db.query<{ created_at: Date }>(
+        `INSERT INTO classification_history
+           (id, user_id, original_name, predicted_category, raw_category,
+            confidence, accepted, second_choice, confidence_margin,
+            probabilities, recommendation, model_version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         RETURNING created_at`,
+        [
+          id,
+          userId,
+          file.originalname,
+          classification.category,
+          classification.rawCategory,
+          classification.confidence,
+          classification.accepted,
+          classification.secondChoice,
+          classification.confidenceMargin,
+          JSON.stringify(classification.probabilities),
+          classification.recommendation,
+          classification.modelVersion,
+        ],
+      );
+      return { ...classification, id, createdAt: saved.rows[0].created_at };
     } catch (error) {
       if (error instanceof BadGatewayException) throw error;
       if (error instanceof DOMException && error.name === 'TimeoutError') {
@@ -66,6 +105,24 @@ export class ClassificationsService {
       }
       throw new BadGatewayException('Classification service is unavailable');
     }
+  }
+
+  async history(userId: string) {
+    const result = await this.db.query<ClassificationHistoryRow>(
+      `SELECT id,
+              original_name AS "originalName",
+              predicted_category AS category,
+              confidence,
+              accepted,
+              model_version AS "modelVersion",
+              created_at AS "createdAt"
+       FROM classification_history
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [userId],
+    );
+    return result.rows;
   }
 
   async saveFeedback(

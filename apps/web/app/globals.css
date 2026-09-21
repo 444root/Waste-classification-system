@@ -54,6 +54,8 @@ a { color: inherit; }
 .topbar > div { display: flex; align-items: center; gap: .8rem; }
 .brand-mark { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 50% 50% 50% 15%; background: var(--forest); color: #fff; font-family: Georgia, serif; font-weight: 700; }
 .account-chip { color: #526057; font-size: .9rem; }.account-chip button { border: 0; border-left: 1px solid var(--line); background: transparent; padding-left: .8rem; color: var(--forest); font-weight: 800; cursor: pointer; }
+.account-chip a { color: var(--forest); font-weight: 800; text-decoration: none; }
+.brand-with-mark { display: flex; align-items: center; gap: .7rem; }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, .8fr); gap: clamp(3rem, 8vw, 8rem); align-items: center; min-height: calc(100vh - 84px); padding: 4rem 0; }
 .hero-copy h1 { margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", serif; font-size: clamp(4rem, 8vw, 8rem); font-weight: 500; line-height: .83; letter-spacing: -.065em; }
 .hero-copy h1 em { color: var(--forest); font-weight: 500; }
@@ -85,11 +87,27 @@ a { color: inherit; }
 .model-note { margin: 2rem 0 0; color: #78847c; font-size: .75rem; line-height: 1.5; }
 .result-actions { display: flex; justify-content: flex-end; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
 
+.records-shell { padding-bottom: 6rem; }
+.records-header { max-width: 850px; padding: clamp(4rem, 9vw, 8rem) 0 3rem; }
+.records-header h1 { margin: 0; font-family: "Iowan Old Style", "Palatino Linotype", serif; font-size: clamp(3.4rem, 7vw, 6.5rem); font-weight: 500; line-height: .9; letter-spacing: -.055em; }
+.records-header > p:last-child { max-width: 650px; color: #617067; font-size: 1.05rem; line-height: 1.6; }
+.record-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+.record-card { border: 1px solid rgba(255,255,255,.75); border-radius: 1.2rem; background: rgba(255,253,247,.72); padding: 1.3rem; box-shadow: 0 18px 45px rgba(20,34,26,.07); }
+.record-card > div { color: #66736b; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }.status-dot { display: inline-block; width: .55rem; height: .55rem; margin-right: .4rem; border-radius: 50%; }.status-dot.accepted { background: var(--forest); }.status-dot.uncertain { background: var(--amber); }
+.record-card h2 { margin: 1rem 0 .2rem; font-family: "Iowan Old Style", "Palatino Linotype", serif; font-size: 2rem; font-weight: 500; }.record-card strong { color: var(--forest); font-size: 1.4rem; }.record-card p, .record-card time { display: block; overflow: hidden; margin: .9rem 0 0; color: #758078; font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
+.empty-state { max-width: 520px; border-radius: 1.4rem; background: var(--paper); padding: 2rem; box-shadow: 0 20px 60px rgba(20,34,26,.08); }.empty-state h2 { margin-top: 0; font-family: "Iowan Old Style", serif; font-size: 2rem; }.empty-state .primary-button { margin-top: 1rem; }
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }.stat-grid article { border-radius: 1.2rem; background: var(--forest-dark); padding: 1.4rem; color: #fff; }.stat-grid span { color: #acd1bd; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }.stat-grid strong { display: block; margin-top: .5rem; font-family: "Iowan Old Style", serif; font-size: 3rem; font-weight: 500; }
+.admin-section { margin-top: 2rem; border-radius: 1.4rem; background: rgba(255,253,247,.82); padding: clamp(1.2rem, 3vw, 2rem); box-shadow: 0 20px 60px rgba(20,34,26,.08); }.section-heading h2 { margin: 0 0 1.5rem; font-family: "Iowan Old Style", serif; font-size: 2.3rem; font-weight: 500; }.table-wrap { overflow-x: auto; }.table-wrap table { width: 100%; border-collapse: collapse; }.table-wrap th, .table-wrap td { border-bottom: 1px solid var(--line); padding: .9rem .7rem; text-align: left; font-size: .82rem; }.table-wrap th { color: #68756d; font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }.role-badge { border-radius: 2rem; background: var(--mint); padding: .35rem .6rem; color: var(--forest-dark); font-size: .7rem; font-weight: 800; text-transform: uppercase; }
+.feedback-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }.feedback-grid article { display: grid; grid-template-columns: 80px 1fr; gap: 1rem; overflow: hidden; border: 1px solid var(--line); border-radius: 1rem; background: #fff; padding: .7rem; }.feedback-grid img { width: 80px; height: 80px; border-radius: .65rem; object-fit: cover; }.feedback-grid article div { display: flex; flex-direction: column; justify-content: center; gap: .2rem; }.feedback-grid span, .feedback-grid small { color: #748078; font-size: .72rem; }.feedback-grid strong { font-size: .88rem; }.empty-row { color: #6c786f; }
+.feedback-image-placeholder { display: grid !important; place-items: center; width: 80px; height: 80px; border-radius: .65rem; background: var(--mint); color: var(--forest); font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+
 @media (max-width: 900px) {
   .auth-shell { grid-template-columns: 1fr; }.auth-story { min-height: 42vh; padding: 3rem 1.5rem; }.auth-story h1 { font-size: 4rem; }.auth-card { min-height: 58vh; padding: 5rem 1.5rem 2rem; }
   .hero-grid { grid-template-columns: 1fr; min-height: 0; gap: 2.5rem; }.hero-copy h1 { font-size: clamp(4rem, 16vw, 6rem); }.upload-panel { max-width: 620px; width: 100%; }.drop-zone, .drop-zone img { min-height: 350px; height: 350px; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 560px) {
   .topbar { min-height: 72px; }.account-chip span { display: none; }.hero-grid { padding-top: 3rem; }.hero-copy h1 { font-size: 3.9rem; }.drop-zone, .drop-zone img { min-height: 285px; height: 285px; }.result-heading { align-items: start; }.confidence strong { font-size: 2rem; }.probabilities > div { grid-template-columns: 7rem 1fr 2.5rem; gap: .6rem; }
+  .account-chip { gap: .55rem !important; }.account-chip a { font-size: .76rem; }.stat-grid { grid-template-columns: 1fr 1fr; }.stat-grid strong { font-size: 2.2rem; }.records-header h1 { font-size: 3.5rem; }
 }

@@ -20,6 +20,7 @@ interface UserRow {
   email: string;
   name: string;
   password_hash: string;
+  role: 'user' | 'admin';
   token_version: number;
   created_at: Date;
 }
@@ -32,18 +33,28 @@ export interface PublicUser {
   id: string;
   email: string;
   name: string;
+  role: 'user' | 'admin';
   createdAt: Date;
 }
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly adminEmails: Set<string>;
 
   constructor(
     private readonly db: DatabaseService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
-  ) {}
+  ) {
+    this.adminEmails = new Set(
+      this.config
+        .get<string>('ADMIN_EMAILS', '')
+        .split(',')
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    );
+  }
 
   async register(dto: RegisterDto) {
     const email = dto.email.trim().toLowerCase();
@@ -54,19 +65,29 @@ export class AuthService {
     const passwordHash = await argon2.hash(dto.password, {
       type: argon2.argon2id,
     });
+    const role = this.adminEmails.has(email) ? 'admin' : 'user';
     const result = await this.db.query<UserRow>(
-      `INSERT INTO users (id, email, name, password_hash)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, email, name, password_hash, token_version, created_at`,
-      [id, email, dto.name.trim(), passwordHash],
+      `INSERT INTO users (id, email, name, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, email, name, password_hash, role, token_version, created_at`,
+      [id, email, dto.name.trim(), passwordHash, role],
     );
     return this.createSession(result.rows[0]);
   }
 
   async login(dto: LoginDto) {
-    const user = await this.findUserByEmail(dto.email.trim().toLowerCase());
+    let user = await this.findUserByEmail(dto.email.trim().toLowerCase());
     if (!user || !(await argon2.verify(user.password_hash, dto.password))) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+    if (this.adminEmails.has(user.email) && user.role !== 'admin') {
+      const promoted = await this.db.query<UserRow>(
+        `UPDATE users SET role = 'admin'
+         WHERE id = $1
+         RETURNING id, email, name, password_hash, role, token_version, created_at`,
+        [user.id],
+      );
+      user = promoted.rows[0];
     }
     return this.createSession(user);
   }
@@ -148,7 +169,7 @@ export class AuthService {
     tokenVersion: number,
   ): Promise<PublicUser | null> {
     const result = await this.db.query<UserRow>(
-      `SELECT id, email, name, password_hash, token_version, created_at
+      `SELECT id, email, name, password_hash, role, token_version, created_at
        FROM users
        WHERE id = $1 AND token_version = $2
        LIMIT 1`,
@@ -159,7 +180,7 @@ export class AuthService {
 
   private async findUserByEmail(email: string): Promise<UserRow | null> {
     const result = await this.db.query<UserRow>(
-      `SELECT id, email, name, password_hash, token_version, created_at
+      `SELECT id, email, name, password_hash, role, token_version, created_at
        FROM users WHERE email = $1 LIMIT 1`,
       [email],
     );
@@ -223,6 +244,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name,
+      role: user.role,
       createdAt: user.created_at,
     };
   }

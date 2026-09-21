@@ -1,0 +1,6 @@
+torch==2.6.0
+torchvision==0.21.0
+Pillow>=10,<13
+scikit-learn>=1.5,<2
+matplotlib>=3.9,<4
+huggingface-hub>=0.24,<1

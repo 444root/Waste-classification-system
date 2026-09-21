@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Post,
   Req,
   UploadedFile,
@@ -33,7 +34,10 @@ export class ClassificationsController {
       limits: { fileSize: 12 * 1024 * 1024, files: 1 },
     }),
   )
-  classify(@UploadedFile() file?: Express.Multer.File) {
+  classify(
+    @Req() request: Request & { user: PublicUser },
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
     if (!file) throw new BadRequestException('Choose an image to classify');
     const isHeifFile = /\.(heic|heif)$/i.test(file.originalname);
     if (!ALLOWED_TYPES.has(file.mimetype) && !isHeifFile) {
@@ -41,7 +45,12 @@ export class ClassificationsController {
         'Only JPG, PNG, WebP, HEIC and HEIF images are allowed',
       );
     }
-    return this.classifications.classify(file);
+    return this.classifications.classify(file, request.user.id);
+  }
+
+  @Get('history')
+  history(@Req() request: Request & { user: PublicUser }) {
+    return this.classifications.history(request.user.id);
   }
 
   @Post('feedback')

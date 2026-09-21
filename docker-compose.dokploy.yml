@@ -30,6 +30,7 @@ services:
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Sortwise}
       FEEDBACK_DIR: /data/feedback
+      ADMIN_EMAILS: ${ADMIN_EMAILS}
     depends_on:
       classifier:
         condition: service_started

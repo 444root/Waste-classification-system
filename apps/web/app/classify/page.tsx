@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api, ApiError, getToken, setToken, User } from '@/lib/api';
 
 interface ClassificationResult {
@@ -137,7 +138,7 @@ export default function ClassifyPage() {
     <main className="app-shell">
       <nav className="topbar">
         <div><span className="brand-mark">S</span><span className="brand">SORTWISE</span></div>
-        <div className="account-chip"><span>{user?.name ?? 'Loading...'}</span><button onClick={logout}>Log out</button></div>
+        <div className="account-chip"><Link href="/history">History</Link>{user?.role === 'admin' && <Link href="/admin">Admin</Link>}<span>{user?.name ?? 'Loading...'}</span><button onClick={logout}>Log out</button></div>
       </nav>
 
       <section className="hero-grid">

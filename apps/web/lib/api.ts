@@ -1,10 +1,11 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 const TOKEN_KEY = 'waste_access_token';
 
 export interface User {
   id: string;
   email: string;
   name: string;
+  role: 'user' | 'admin';
   createdAt: string;
 }
 
@@ -63,4 +64,3 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
   }
   return data as T;
 }
-

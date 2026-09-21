@@ -26,12 +26,16 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         email TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
         password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user',
         token_version INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
       ALTER TABLE users
         ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0;
+
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
 
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
         id UUID PRIMARY KEY,
@@ -62,6 +66,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
       CREATE INDEX IF NOT EXISTS classification_feedback_categories_idx
         ON classification_feedback(predicted_category, corrected_category);
+
+      CREATE TABLE IF NOT EXISTS classification_history (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        original_name TEXT NOT NULL,
+        predicted_category TEXT NOT NULL,
+        raw_category TEXT NOT NULL,
+        confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+        accepted BOOLEAN NOT NULL,
+        second_choice TEXT NOT NULL,
+        confidence_margin REAL NOT NULL,
+        probabilities JSONB NOT NULL,
+        recommendation TEXT NOT NULL,
+        model_version TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS classification_history_user_created_idx
+        ON classification_history(user_id, created_at DESC);
     `);
   }
 
